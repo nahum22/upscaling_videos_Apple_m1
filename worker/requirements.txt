@@ -1,0 +1,9 @@
+wheel
+setuptools>=65.5.1
+Cython
+numpy<2.0
+opencv-python==4.9.0.80
+torch==2.0.0
+torchvision==0.15.1
+realesrgan==0.3.0
+pillow>=9.0

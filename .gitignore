@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# storage
+/storage/*
+!/storage/**/.gitkeep
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Model weights (downloaded during Docker build)
+worker/weights/*.pth
+worker/weights/*.pt

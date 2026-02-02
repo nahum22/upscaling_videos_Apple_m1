@@ -1,0 +1,23 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      STORAGE_ROOT: /app/storage
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_DISABLE_TURBOPACK: "1"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./storage:/app/storage
+
+  worker:
+    build:
+      context: ./worker
+    profiles: ["cpu"]
+    environment:
+      STORAGE_ROOT: /storage
+    volumes:
+      - ./storage:/storage
+      - ./worker/weights:/worker/weights

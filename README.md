@@ -1,34 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Metal AI Video Upscaler (Local)
 
-## Getting Started
+Local web app with AI worker that upscales videos to at least 1080p, preserving aspect ratio.
 
-First, run the development server:
+## Requirements
+
+- Docker Desktop
+- Real-ESRGAN model weights (see Quick Start below)
+
+## Quick Start
+
+### 1. Download Model Weights
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd worker/weights
+curl -L -o RealESRGAN_x4plus.pth https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
+cd ../..
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Start All Services
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker compose --profile cpu up
+```
 
-## Learn More
+This starts both the web UI and the worker. Open localhost:3000 in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+## Usage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Upload a video in the web UI
+2. Worker picks up the job and upscales to 1080p
+3. Download the completed video
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Notes
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Videos are always upscaled, regardless of input resolution
+- Aspect ratio is preserved automatically
+- Quality prioritized over speed (slower but better results)
+- Worker runs in Docker (CPU mode) - for Metal acceleration on M3 Mac, run the worker natively on the host instead
