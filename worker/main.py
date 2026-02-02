@@ -97,35 +97,51 @@ def upscale_frames(frames_dir: Path, output_dir: Path, job_path: Path, job: dict
             f"Missing model weights at {MODEL_PATH}. Place RealESRGAN_x4plus.pth in worker/weights."
         )
 
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
-    
-    # On CPU, Real-ESRGAN is too slow (~7s per frame).
-    # Use fast OpenCV upscaling instead. For GPU, use the AI upscaler.
-    use_fast_upscale = (device == "cpu")
-    
-    if use_fast_upscale:
-        print(f"Using fast CPU upscaling (OpenCV Lanczos4)...", flush=True)
-        upsampler = None  # Won't be used
-    else:
-        print("Importing model dependencies...", flush=True)
-        # Import model architecture
-        from basicsr.archs.rrdbnet_arch import RRDBNet
-        from realesrgan import RealESRGANer
-        
-        print(f"Initializing model on {device}...", flush=True)
-        model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
-        print("Loading RealESRGAN weights...", flush=True)
-        upsampler = RealESRGANer(
-            scale=4,
-            model_path=str(MODEL_PATH),
-            model=model,
-            tile=32,
-            tile_pad=8,
-            pre_pad=0,
-            half=False,
-            device=device,
+    mps_available = torch.backends.mps.is_available()
+    cuda_available = torch.cuda.is_available()
+    device = "mps" if mps_available else "cuda" if cuda_available else None
+
+    print(
+        "GPU diagnostics | "
+        f"torch={torch.__version__} "
+        f"mps_available={mps_available} "
+        f"cuda_available={cuda_available} "
+        f"device={device}",
+        flush=True,
+    )
+
+    if device == "cuda":
+        try:
+            cuda_name = torch.cuda.get_device_name(0)
+        except Exception:
+            cuda_name = "unknown"
+        print(f"CUDA device: {cuda_name}", flush=True)
+
+    if device is None:
+        raise RuntimeError(
+            "GPU is required for high-quality upscaling. "
+            "No MPS or CUDA device detected."
         )
-        print("Model ready.", flush=True)
+
+    print("Importing model dependencies...", flush=True)
+    # Import model architecture
+    from basicsr.archs.rrdbnet_arch import RRDBNet
+    from realesrgan import RealESRGANer
+
+    print(f"Initializing model on {device}...", flush=True)
+    model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+    print("Loading RealESRGAN weights...", flush=True)
+    upsampler = RealESRGANer(
+        scale=4,
+        model_path=str(MODEL_PATH),
+        model=model,
+        tile=32,
+        tile_pad=8,
+        pre_pad=0,
+        half=False,
+        device=device,
+    )
+    print("Model ready.", flush=True)
 
     frames = sorted(frames_dir.glob("*.png"))
     total = len(frames)
@@ -139,13 +155,7 @@ def upscale_frames(frames_dir: Path, output_dir: Path, job_path: Path, job: dict
         print(f"Upscaling frame {idx}/{total}: {frame_path.name}", flush=True)
         start_ts = time.time()
         
-        if use_fast_upscale:
-            # Fast CPU upscaling using OpenCV Lanczos4
-            h, w = image.shape[:2]
-            output = cv2.resize(image, (w * 4, h * 4), interpolation=cv2.INTER_LANCZOS4)
-        else:
-            # AI upscaling (GPU)
-            output, _ = upsampler.enhance(image, outscale=4)
+        output, _ = upsampler.enhance(image, outscale=4)
         
         elapsed = time.time() - start_ts
         out_path = output_dir / frame_path.name
