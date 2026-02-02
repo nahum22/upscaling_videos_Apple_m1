@@ -182,7 +182,7 @@ def encode_video(
             "-map",
             "0:a?",
             "-vf",
-            f"scale=-2:{target_height}",
+            f"scale=-2:{target_height}:flags=lanczos,setsar=1",
             "-c:v",
             "libx264",
             "-preset",
@@ -212,7 +212,8 @@ def process_job(job_path: Path):
 
     print(f"Probing video: {input_path}", flush=True)
     width, height, fps = probe_video(input_path)
-    target_height = max(1080, height)
+    requested_target = job.get("targetHeight")
+    target_height = max(int(requested_target) if requested_target else 1080, height)
 
     temp_root = TMP_DIR / job["id"]
     frames_dir = temp_root / "frames"

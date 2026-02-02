@@ -11,12 +11,13 @@ export interface UpscaleJob {
   inputPath: string;
   outputPath: string;
   originalName: string;
+  targetHeight?: number;
   error?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export async function createJob(originalName: string) {
+export async function createJob(originalName: string, targetHeight?: number) {
   await ensureStorage();
   const id = crypto.randomUUID();
   const inputPath = relativeUploadPath(id, originalName);
@@ -30,6 +31,7 @@ export async function createJob(originalName: string) {
     inputPath,
     outputPath,
     originalName,
+    targetHeight,
     createdAt: now,
     updatedAt: now,
   };

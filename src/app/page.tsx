@@ -16,6 +16,7 @@ export default function Home() {
   const [job, setJob] = useState<JobState | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [targetHeight, setTargetHeight] = useState<"1080" | "2160" | "4320">("1080");
 
   const downloadUrl = useMemo(() => {
     if (!job || job.status !== "completed") return null;
@@ -57,6 +58,7 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("targetHeight", targetHeight);
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -85,11 +87,11 @@ export default function Home() {
             Local AI Video Upscaler
           </p>
           <h1 className="text-4xl font-semibold md:text-5xl">
-            Upgrade video quality to Full HD with Metal-accelerated AI
+            Upgrade video quality to Full HD, 4K, or 8K with Metal-accelerated AI
           </h1>
           <p className="max-w-2xl text-lg text-slate-300">
-            Upload a video and the local worker will upscale it to at least 1080p
-            while preserving aspect ratio. Quality is prioritized over speed.
+            Upload a video and the local worker will upscale it to at least 1080p,
+            4K, or 8K while preserving aspect ratio. Quality is prioritized over speed.
           </p>
         </header>
 
@@ -110,6 +112,20 @@ export default function Home() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <span className="text-slate-400">Target quality</span>
+              <select
+                value={targetHeight}
+                onChange={(event) =>
+                  setTargetHeight(event.target.value as "1080" | "2160" | "4320")
+                }
+                className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-200"
+              >
+                <option value="1080">1080p (Full HD)</option>
+                <option value="2160">2160p (4K)</option>
+                <option value="4320">4320p (8K)</option>
+              </select>
+            </label>
             <button
               onClick={handleUpload}
               disabled={isUploading}
