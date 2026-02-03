@@ -16,8 +16,11 @@ docker container prune -f > /dev/null 2>&1
 # Clean up stale Docker networks
 docker network prune -f > /dev/null 2>&1
 
-# Start services
-docker compose --profile cpu up
+echo ""
+echo "Starting web service in Docker..."
+docker compose up -d web
 
 echo ""
-echo "Application stopped."
+echo "Starting GPU worker on host..."
+cd worker
+./run-worker.sh

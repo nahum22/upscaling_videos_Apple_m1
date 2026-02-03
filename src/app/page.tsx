@@ -14,8 +14,10 @@ interface JobState {
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<JobState | null>(null);
+  const [lastJobId, setLastJobId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshFailures, setRefreshFailures] = useState(0);
   const [targetHeight, setTargetHeight] = useState<"1080" | "2160" | "4320">("1080");
 
   const downloadUrl = useMemo(() => {
@@ -24,26 +26,99 @@ export default function Home() {
   }, [job]);
 
   useEffect(() => {
-    if (!job || job.status === "completed" || job.status === "failed") return;
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("lastJobId");
+    if (stored) {
+      setLastJobId(stored);
+      return;
+    }
 
-    const interval = setInterval(async () => {
+    let cancelled = false;
+
+    const loadLatestJob = async () => {
       try {
-        const response = await fetch(`/api/status?id=${job.id}`);
+        const response = await fetch("/api/latest");
         if (!response.ok) return;
         const next = await response.json();
-        setJob({
-          id: next.id,
-          status: next.status,
-          progress: next.progress ?? 0,
-          error: next.error,
-        });
+        if (!cancelled && next?.id) {
+          setJob({
+            id: next.id,
+            status: next.status,
+            progress: next.progress ?? 0,
+            error: next.error,
+          });
+          window.localStorage.setItem("lastJobId", next.id);
+          setLastJobId(next.id);
+        }
       } catch {
-        setError("Failed to refresh job status.");
+        if (!cancelled) {
+          setError("Failed to restore latest job status.");
+        }
       }
-    }, 3000);
+    };
 
-    return () => clearInterval(interval);
-  }, [job]);
+    loadLatestJob();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeJobId = job?.id ?? lastJobId;
+    if (!activeJobId) return;
+
+    let cancelled = false;
+
+    const loadStatus = async () => {
+      try {
+        const response = await fetch(`/api/status?id=${activeJobId}`, { cache: "no-store" });
+        if (!response.ok) {
+          if (response.status === 404 && typeof window !== "undefined") {
+            window.localStorage.removeItem("lastJobId");
+            setLastJobId(null);
+          }
+          return;
+        }
+        const next = await response.json();
+        if (!cancelled) {
+          setJob({
+            id: next.id,
+            status: next.status,
+            progress: next.progress ?? 0,
+            error: next.error,
+          });
+          setRefreshFailures(0);
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setRefreshFailures((prev) => {
+            const nextFailures = prev + 1;
+            if (nextFailures >= 3) {
+              setError("Failed to refresh job status.");
+            }
+            return nextFailures;
+          });
+        }
+      }
+    };
+
+    loadStatus();
+
+    if (job?.status === "completed" || job?.status === "failed") {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const interval = setInterval(loadStatus, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [job?.id, job?.status, lastJobId]);
 
   const handleUpload = async () => {
     if (!file) {
@@ -72,6 +147,10 @@ export default function Home() {
 
       const payload = await response.json();
       setJob({ id: payload.jobId, status: "queued", progress: 0 });
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("lastJobId", payload.jobId);
+        setLastJobId(payload.jobId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -157,16 +236,27 @@ export default function Home() {
                 </span>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-slate-300">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-base font-medium text-slate-200">
                   <span>Progress</span>
-                  <span>{Math.round(job.progress)}%</span>
+                  <span className="text-lg font-semibold text-blue-400">{Math.round(job.progress)}%</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-slate-800">
+                <div className="h-4 w-full overflow-hidden rounded-full bg-slate-800 shadow-inner">
                   <div
-                    className="h-2 rounded-full bg-blue-500 transition-all"
-                    style={{ width: `${Math.min(job.progress, 100)}%` }}
+                    className="h-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 ease-out shadow-lg"
+                    style={{ width: `${Math.max(1, Math.min(job.progress, 100))}%` }}
                   />
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>
+                    {job.status === "queued" && "Waiting to start..."}
+                    {job.status === "processing" && job.progress < 10 && "Extracting frames..."}
+                    {job.status === "processing" && job.progress >= 10 && job.progress < 90 && "Upscaling frames with AI..."}
+                    {job.status === "processing" && job.progress >= 90 && "Encoding final video..."}
+                    {job.status === "completed" && "Complete!"}
+                    {job.status === "failed" && "Failed"}
+                  </span>
+                  <span>Job ID: {job.id.split("-")[0]}</span>
                 </div>
               </div>
 

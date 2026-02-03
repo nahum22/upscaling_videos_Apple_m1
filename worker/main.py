@@ -9,6 +9,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+import types
 
 print("Starting worker...", flush=True)
 
@@ -24,6 +25,20 @@ WEIGHTS_DIR = Path(__file__).resolve().parent / "weights"
 MODEL_PATH = WEIGHTS_DIR / "RealESRGAN_x4plus.pth"
 
 POLL_INTERVAL = 3
+
+
+def ensure_torchvision_compat():
+    try:
+        import importlib.util
+
+        if importlib.util.find_spec("torchvision.transforms.functional_tensor") is None:
+            from torchvision.transforms import _functional_tensor as _functional_tensor
+
+            module = types.ModuleType("torchvision.transforms.functional_tensor")
+            module.__dict__.update(_functional_tensor.__dict__)
+            sys.modules["torchvision.transforms.functional_tensor"] = module
+    except Exception:
+        pass
 
 
 def load_job(job_path: Path):
@@ -124,6 +139,7 @@ def upscale_frames(frames_dir: Path, output_dir: Path, job_path: Path, job: dict
         )
 
     print("Importing model dependencies...", flush=True)
+    ensure_torchvision_compat()
     # Import model architecture
     from basicsr.archs.rrdbnet_arch import RRDBNet
     from realesrgan import RealESRGANer

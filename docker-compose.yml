@@ -12,12 +12,5 @@ services:
       - /app/node_modules
       - ./storage:/app/storage
 
-  worker:
-    build:
-      context: ./worker
-    profiles: ["cpu"]
-    environment:
-      STORAGE_ROOT: /storage
-    volumes:
-      - ./storage:/storage
-      - ./worker/weights:/worker/weights
+  # Worker runs on host for GPU access
+  # Use: cd worker && ./run-worker.sh
