@@ -26,6 +26,17 @@ MODEL_PATH = WEIGHTS_DIR / "RealESRGAN_x4plus.pth"
 
 POLL_INTERVAL = 3
 
+FFMPEG_BIN = os.environ.get("FFMPEG_BIN")
+FFMPEG_PATH = os.path.join(FFMPEG_BIN, "ffmpeg.exe") if FFMPEG_BIN else "ffmpeg"
+FFPROBE_PATH = os.path.join(FFMPEG_BIN, "ffprobe.exe") if FFMPEG_BIN else "ffprobe"
+
+if FFMPEG_BIN:
+    if not (Path(FFMPEG_PATH).exists() and Path(FFPROBE_PATH).exists()):
+        raise FileNotFoundError(
+            "FFMPEG_BIN is set but ffmpeg.exe/ffprobe.exe not found in "
+            f"{FFMPEG_BIN}"
+        )
+
 
 def ensure_torchvision_compat():
     try:
@@ -53,6 +64,10 @@ def save_job(job_path: Path, job: dict):
 
 
 def run_cmd(command: list[str]):
+    if command and command[0] == "ffmpeg":
+        command = [FFMPEG_PATH, *command[1:]]
+    elif command and command[0] == "ffprobe":
+        command = [FFPROBE_PATH, *command[1:]]
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "Command failed")
@@ -235,6 +250,13 @@ def process_job(job_path: Path):
 
     input_path = STORAGE_ROOT / job["inputPath"]
     output_path = STORAGE_ROOT / job["outputPath"]
+
+    if not input_path.exists():
+        raise FileNotFoundError(
+            "Input video not found. Expected at "
+            f"{input_path}. Ensure the UI and worker share the same STORAGE_ROOT "
+            "and that the upload completed."
+        )
 
     print(f"Probing video: {input_path}", flush=True)
     width, height, fps = probe_video(input_path)

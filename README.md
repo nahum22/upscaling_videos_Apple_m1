@@ -55,6 +55,20 @@ cd worker
 STORAGE_ROOT="../storage" "../.venv/bin/python" main.py
 ```
 
+## Windows (UI + Worker)
+
+> The worker requires a GPU. On Windows this means an NVIDIA GPU with CUDA and a compatible PyTorch build. Python 3.12.x is required (3.13+ wheels are not available for some deps).
+
+**Start the UI:**
+```powershell
+npm run dev
+```
+
+**Start the worker:**
+```powershell
+npm run worker:win
+```
+
 ## Usage
 
 1. Open localhost:3000 in your browser

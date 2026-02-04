@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NEXT_DISABLE_TURBOPACK=1 next dev",
+    "dev": "cross-env NEXT_DISABLE_TURBOPACK=1 STORAGE_ROOT=./storage next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "worker:mac": "bash ./worker/run-worker.sh",
+    "worker:win": "powershell -ExecutionPolicy Bypass -File ./worker/run-worker.ps1"
   },
   "dependencies": {
     "next": "16.1.6",
@@ -19,6 +21,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
